@@ -1,0 +1,17 @@
+# requirements.txt
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+aiofiles
+opencv-python
+# --- OCR Libraries ---
+paddleocr
+pytesseract
+ultralytics
+rapidfuzz
+symspellpy
+# --- Audio Libraries ---
+sounddevice
+soundfile
+TTS

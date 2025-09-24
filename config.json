@@ -1,0 +1,24 @@
+{
+  "camera": {
+    "source_type": "opencv",
+    "camera_id": 0,
+    "resolution": "1080p"
+  },
+  "ocr": {
+    "engine": "paddle",
+    "language": "hin",
+    "capture_interval": 1
+  },
+  "tts": {
+    "engine": "coqui",
+    "coqui_model": "tts_models/en/vctk/vits",
+    "voice": "p335",
+    "speed": 1.0,
+    "volume": 0.9
+  },
+  "app": {
+    "high_contrast": false,
+    "font_size": "16px",
+    "max_history": 50
+  }
+}

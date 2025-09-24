@@ -1,0 +1,27 @@
+# Virtual environments
+.venv/
+.venv-main/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Model / large files
+*.pt
+*.pth
+*.onnx
+yolov8n.pt
+
+# IDE/editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# OneDrive / tempfile
+*.tmp
+*.log

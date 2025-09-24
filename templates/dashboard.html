@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+  <div class="col-md-8">
+    <div class="card mb-3" id="dashboard" tabindex="0" aria-label="Dashboard">
+      <div class="card-body">
+        <h5 class="card-title">Live OCR Output</h5>
+        <div id="ocrOutput" class="ocr-box" role="region" aria-live="polite" aria-atomic="true">Nothing yet</div>
+        <div class="mt-2">
+          <button class="btn btn-success" id="startBtn">Start</button>
+          <button class="btn btn-danger" id="stopBtn">Stop</button>
+          <button class="btn btn-primary" id="replayBtn">Replay Audio</button>
+        </div>
+        <div class="mt-3">
+          <strong>Status:</strong> <span id="statusText">Stopped</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3" id="history" tabindex="0" aria-label="Text history">
+      <div class="card-body">
+        <h5 class="card-title">Text History</h5>
+        <div id="historyList">No history</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card mb-3" id="ocr" tabindex="0">
+      <div class="card-body">
+        <h5 class="card-title">OCR Settings</h5>
+        <form id="ocrForm">
+          <div class="mb-2">
+            <label for="ocrEngine" class="form-label">OCR Engine</label>
+            <select id="ocrEngine" name="ocr_engine" class="form-select" aria-label="OCR engine select">
+              <option value="paddle">PaddleOCR (recommended)</option>
+              <option value="tesseract">Tesseract (fallback)</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label for="ocrLang" class="form-label">Language</label>
+            <select id="ocrLang" name="language" class="form-select">
+              <option value="eng">English</option>
+              <option value="hin">Hindi</option>
+              <option value="kan">Kannada</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label for="captureInterval" class="form-label">Capture Interval (s)</label>
+            <input id="captureInterval" name="capture_interval" type="number" class="form-control" min="1" max="10" value="{{ config['ocr']['capture_interval'] }}">
+          </div>
+          <button class="btn btn-primary" id="saveOcr">Save OCR Settings</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mb-3" id="tts" tabindex="0">
+      <div class="card-body">
+        <h5 class="card-title">TTS Settings</h5>
+        <form id="ttsForm">
+          <div class="mb-2">
+            <label for="ttsEngine" class="form-label">TTS Engine</label>
+            <select id="ttsEngine" name="tts_engine" class="form-select">
+              <option value="coqui">Coqui TTS</option>
+              <option value="espeak">espeak-ng</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label for="ttsVoice" class="form-label">Voice (Coqui)</label>
+            <select id="ttsVoice" name="voice" class="form-select">
+              <option value="p335">Female 1</option>
+              {% for voice in voices %}
+              <option value="{{ voice }}">{{ voice }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label for="ttsSpeed" class="form-label">Speed</label>
+            <input id="ttsSpeed" name="speed" type="range" min="0.5" max="1.6" step="0.1" value="{{ config['tts']['speed'] }}">
+          </div>
+          <div class="mb-2">
+            <label for="ttsVolume" class="form-label">Volume</label>
+            <input id="ttsVolume" name="volume" type="range" min="0.1" max="1.0" step="0.1" value="{{ config['tts']['volume'] }}">
+          </div>
+          <button class="btn btn-primary" id="saveTts">Save TTS Settings</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mb-3" id="camera" tabindex="0">
+      <div class="card-body">
+        <h5 class="card-title">Camera Settings</h5>
+        <form id="cameraForm">
+          <div class="mb-2">
+            <label for="cameraSource" class="form-label">Camera Source</label>
+            <select id="cameraSource" name="source_type" class="form-select">
+              <option value="opencv">OpenCV</option>
+              <option value="gstreamer">GStreamer (nvarguscamerasrc)</option>
+              <option value="arducam">ArduCam SDK</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label for="cameraId" class="form-label">Camera ID</label>
+            <input id="cameraId" name="camera_id" type="number" class="form-control" min="0" value="{{ config['camera']['camera_id'] }}">
+          </div>
+          <div class="mb-2">
+            <label for="resolution" class="form-label">Resolution</label>
+            <select id="resolution" name="resolution" class="form-select">
+              <option value="720p">720p</option>
+              <option value="1080p">1080p</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="saveCamera">Save Camera Settings</button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+async function status() {
+  try {
+    let r = await fetch('/api/status');
+    let j = await r.json();
+    document.getElementById('statusText').textContent = j.pipeline.running ? 'Running' : 'Stopped';
+    if (j.pipeline.last_text) {
+      document.getElementById('ocrOutput').textContent = j.pipeline.last_text;
+    }
+  } catch(e) { console.error(e); }
+}
+async function history() {
+  try {
+    let r = await fetch('/api/history');
+    let j = await r.json();
+    const list = document.getElementById('historyList');
+    list.innerHTML = '';
+    if (j.history && j.history.length) {
+      j.history.forEach(h => {
+        const el = document.createElement('div');
+        el.className = 'mb-2';
+        el.textContent = `${new Date(h.ts*1000).toLocaleTimeString()}: ${h.text}`;
+        list.appendChild(el);
+      });
+    } else {
+      list.textContent = 'No history';
+    }
+  } catch(e) {}
+}
+document.getElementById('startBtn').addEventListener('click', ()=>fetch('/api/start',{method:'POST'}).then(status));
+document.getElementById('stopBtn').addEventListener('click', ()=>fetch('/api/stop',{method:'POST'}).then(status));
+document.getElementById('replayBtn').addEventListener('click', async ()=>{
+  const r = await fetch('/api/replay');
+  if (r.status === 200) {
+    const audioBlob = await r.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
+    new Audio(audioUrl).play();
+  } else {
+    alert('No audio available');
+  }
+});
+
+// Save forms
+document.getElementById('saveOcr').addEventListener('click', async (e)=>{
+  e.preventDefault();
+  const payload = {
+    ocr: {
+      engine: document.getElementById('ocrEngine').value,
+      language: document.getElementById('ocrLang').value,
+      capture_interval: Number(document.getElementById('captureInterval').value)
+    }
+  };
+  await fetch('/api/config', {method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  alert('OCR settings saved');
+});
+document.getElementById('saveTts').addEventListener('click', async (e)=>{
+  e.preventDefault();
+  const payload = {
+    tts: {
+      engine: document.getElementById('ttsEngine').value,
+      voice: document.getElementById('ttsVoice').value,
+      speed: Number(document.getElementById('ttsSpeed').value),
+      volume: Number(document.getElementById('ttsVolume').value)
+    }
+  };
+  await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  alert('TTS settings saved');
+});
+document.getElementById('saveCamera').addEventListener('click', async (e)=>{
+  e.preventDefault();
+  const payload = {
+    camera: {
+      source_type: document.getElementById('cameraSource').value,
+      camera_id: Number(document.getElementById('cameraId').value),
+      resolution: document.getElementById('resolution').value
+    }
+  };
+  await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  alert('Camera settings saved');
+});
+
+setInterval(status, 1000); // Faster status updates
+setInterval(history, 3000);
+status();
+history();
+</script>
+{% endblock %}
